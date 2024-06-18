@@ -12,7 +12,7 @@ spring:
       hibernate:
         format_sql: true
     database: postgresql
-    database-platform: org.hibernate.dialect.PostgresSLDialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
   mail:
     host: localhost
     port: 1025
@@ -21,11 +21,24 @@ spring:
     properties:
       mail:
         smtp:
-          trust: "*"
-        auth: true
-        starttls:
-          enable: true
-        connectiontimeout: 5000
-        timeout: 3000
-        writetimeout: 5000
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+          ssl:
+            trust: "*"
+
+
+
+application:
+    security:
+      jwt:
+        secrect-key: E71481A3A9E55CBE78620DD83B5A8FF9ED54107F5DDF47DD4B51756529C474A9
+        expiration: 8640000
+    mailing:
+      frontend:
+        activation-url: http://localhost:4200/activate-account
+
 
