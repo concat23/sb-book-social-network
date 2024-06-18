@@ -42,11 +42,11 @@ public class JwtService {
                 .parseSignedClaims(token).getBody();
     }
 
-    private String generateToken(HashMap<String, Objects> claims, UserDetails userDetails) {
+    public String generateToken(HashMap<String, Object> claims, UserDetails userDetails) {
         return buildToken(claims,userDetails, jwtExpiration);
     }
 
-    private String buildToken(HashMap<String, Objects> extraClaims, UserDetails userDetails, long jwtExpiration) {
+    private String buildToken(HashMap<String, Object> extraClaims, UserDetails userDetails, long jwtExpiration) {
         var authorities = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 
         return Jwts.builder()
