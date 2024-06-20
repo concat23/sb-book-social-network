@@ -30,8 +30,6 @@ spring:
           ssl:
             trust: "*"
 
-
-
 application:
     security:
       jwt:
@@ -40,5 +38,12 @@ application:
     mailing:
       frontend:
         activation-url: http://localhost:4200/activate-account
+    file:
+      uploads:
+        photos-output-path: ./uploads
+
+
+server:
+  port: 8700
 
 

@@ -3,6 +3,7 @@ package com.dev.sbbooknetwork.handler;
 import jakarta.mail.MessagingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -14,8 +15,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static com.dev.sbbooknetwork.handler.BusinessErrorCodes.*;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.*;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -83,6 +83,14 @@ public class GlobalExceptionHandler {
                 .body(ExceptionResponse.builder()
                         .businessErrorDescription("Internal error, contact the admin")
                         .error(exp.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException ex) {
+        return ResponseEntity.status(FORBIDDEN)
+                .body(ExceptionResponse.builder()
+                        .businessErrorDescription("Access denied: " + ex.getMessage())
                         .build());
     }
 }

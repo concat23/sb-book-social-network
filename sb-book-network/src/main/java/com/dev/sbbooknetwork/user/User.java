@@ -1,5 +1,7 @@
 package com.dev.sbbooknetwork.user;
 
+import com.dev.sbbooknetwork.book.Book;
+import com.dev.sbbooknetwork.history.BookTransactionHistory;
 import com.dev.sbbooknetwork.role.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -56,6 +58,12 @@ public class User implements UserDetails, Principal {
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Role> roles;
+
+    @OneToMany(mappedBy = "owner")
+    private List<Book> books;
+
+    @OneToMany(mappedBy = "user")
+    private List<BookTransactionHistory> histories;
     @Override
     public String getName() {
         return email;

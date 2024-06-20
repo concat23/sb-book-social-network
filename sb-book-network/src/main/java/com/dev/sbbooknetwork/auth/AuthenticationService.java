@@ -46,6 +46,11 @@ public class AuthenticationService {
     @Value("${application.mailing.frontend.activation-url}")
     private String activationUrl;
     public void register(RegistrationRequest request) throws MessagingException {
+
+        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
+            throw new IllegalStateException("Email already taken");
+        });
+
         var userRole = roleRepository.findByName("USER")
                 .orElseThrow(() -> new IllegalStateException("ROLE USER was not initialized"));
         var user = User.builder()
@@ -61,7 +66,7 @@ public class AuthenticationService {
         sendValidationEmail(user);
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request){
+    public AuthenticationResponse authenticate(AuthenticationRequest request, LocalDateTime loginTime, String loginPage) {
         var auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -70,12 +75,15 @@ public class AuthenticationService {
         );
 
         var claims = new HashMap<String, Object>();
-        var user = ((User)auth.getPrincipal());
-        claims.put("fullName",user.fullName());
+        var user = (User) auth.getPrincipal();
+        claims.put("fullName", user.getUsername());
 
-        var jwtToken = jwtService.generateToken(claims,user);
+        var jwtToken = jwtService.generateToken(claims, user);
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .loginTime(loginTime)
+                .loginPage(loginPage)
                 .build();
     }
 
