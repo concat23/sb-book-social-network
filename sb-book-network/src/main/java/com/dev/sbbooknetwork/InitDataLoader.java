@@ -4,11 +4,14 @@ import com.dev.sbbooknetwork.role.Role;
 import com.dev.sbbooknetwork.role.RoleRepository;
 import com.dev.sbbooknetwork.user.User;
 import com.dev.sbbooknetwork.user.UserRepository;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 
-public class InitDataLoader {
+@Component
+public class InitDataLoader implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -19,7 +22,8 @@ public class InitDataLoader {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public void run() {
+    @Override
+    public void run(String... args) {
 
         if (roleRepository.findByName("USER").isEmpty()) {
             roleRepository.save(Role.builder().name("USER").build());
@@ -42,5 +46,4 @@ public class InitDataLoader {
             );
         }
     }
-
 }

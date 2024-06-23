@@ -86,11 +86,11 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException ex) {
-        return ResponseEntity.status(FORBIDDEN)
-                .body(ExceptionResponse.builder()
-                        .businessErrorDescription("Access denied: " + ex.getMessage())
-                        .build());
-    }
+//    @ExceptionHandler(AccessDeniedException.class)
+//    public ResponseEntity<ExceptionResponse> handleAccessDeniedException(AccessDeniedException ex) {
+//        return ResponseEntity.status(FORBIDDEN)
+//                .body(ExceptionResponse.builder()
+//                        .businessErrorDescription("Access denied: " + ex.getMessage())
+//                        .build());
+//    }
 }

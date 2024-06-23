@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mysql-sb-book-social-network:
+    image: mysql:8.0.28
+    container_name: mysql-sb-book-social-network
+    ports:
+      - 3310:3306
+    volumes:
+      - mysql-sb-book-social-network:/var/lib/mysql
+      - mysql-sb-book-social-network-config-deamond:/etc/mysql/conf.d
+    networks:
+      - backend-net
+    environment:
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: abc@#123
+      MYSQL_ROOT_PASSWORD: abc@#123
+      MYSQL_DATABASE: bsndb
+
+  sb-book-social-network-container:
+    image: bangvo22/sb-book-social-network:v1.0.0
+    container_name: sb-book-social-network-container
+    ports:
+      - 8600:8700
+    volumes:
+      - ./:/app
+    networks:
+      - backend-net
+    depends_on:
+      - mysql-sb-book-social-network
+      - mail-dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-sb-book-social-network:3306/bsndb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: abc@#123
+      SPRING_MAIL_HOST: mail-dev
+      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_USERNAME: bang
+      SPRING_MAIL_PASSWORD: bang
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+
+  mail-dev:
+    container_name: mail-dev-sb-book-social-network
+    image: maildev/maildev
+    ports:
+      - 1080:1080
+      - 1025:1025
+    networks:
+      - backend-net
+
+networks:
+  backend-net:
+    name: sb-book-social-network-net
+
+volumes:
+  mysql-sb-book-social-network:
+  mysql-sb-book-social-network-config-deamond:
