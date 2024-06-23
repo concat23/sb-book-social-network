@@ -7,9 +7,17 @@ import lombok.experimental.SuperBuilder;
 
 @Getter
 @Setter
-@AllArgsConstructor
 @SuperBuilder
 public class ResponseMessage {
     private String message;
     private int statusCode;
+
+    public ResponseMessage(String message) {
+        this.message = message;
+    }
+
+    public ResponseMessage(String message, int statusCode) {
+        this.message = message;
+        this.statusCode = statusCode;
+    }
 }

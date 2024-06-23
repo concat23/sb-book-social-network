@@ -1,8 +1,10 @@
 package com.dev.sbbooknetwork.email;
 
+import com.dev.sbbooknetwork.user.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -54,5 +56,14 @@ public class EmailService {
         helper.setText(template,true);
 
         mailSender.send(mimeMessage);
+    }
+
+
+    public void sendPasswordResetEmail(User user, String resetLink) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(user.getEmail());
+        message.setSubject("Password Reset Request");
+        message.setText("To reset your password, click the link below:\n\n" + resetLink);
+        mailSender.send(message);
     }
 }

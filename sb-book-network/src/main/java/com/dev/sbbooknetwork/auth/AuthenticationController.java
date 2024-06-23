@@ -6,19 +6,27 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+
+import static com.dev.sbbooknetwork.constant.ApiMessage.*;
 
 
 @RestController
@@ -28,7 +36,7 @@ import java.time.LocalDateTime;
 public class AuthenticationController {
     private final AuthenticationService service;
 
-
+    private final AuthenticationAttemptService authenticationAttemptService;
 
     @Secured("ADMIN")
     @PostMapping("/register")
@@ -101,7 +109,6 @@ public class AuthenticationController {
     }
 
 
-    @PostMapping("/authenticate")
     @Operation(
             summary = "Authenticate user",
             description = "Authenticate a user based on the provided credentials.",
@@ -154,24 +161,144 @@ public class AuthenticationController {
                     )
             }
     )
+    @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(
-            @Parameter(description = "Authentication request details", required = true)
-            @RequestBody @Valid AuthenticationRequest request){
-            String loginPage = String.valueOf(this.getCurrentRequestBaseUri() + "/auth/authenticate");
+            @RequestBody @Valid AuthenticationRequest request) {
+
+        String username = request.getEmail();
+
+        int loginAttempts = authenticationAttemptService.getLoginAttempts(username);
+
+        if (authenticationAttemptService.hasExceededMaxAttempts(username)) {
+            AuthenticationResponse response = new AuthenticationResponse("Maximum login attempts exceeded");
+
+
+            response.setLoginAttempts(loginAttempts);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
+
+        try {
+            String loginPage = getCurrentRequestBaseUri() + "/auth/authenticate";
             LocalDateTime loginTime = LocalDateTime.now();
-            AuthenticationResponse response = service.authenticate(request,loginTime,loginPage);
-        return ResponseEntity.ok(response);
+            AuthenticationResponse response = service.authenticate(request, LOGIN_SUCCESSFULLY, loginTime, loginPage, loginAttempts);
+            authenticationAttemptService.evictUserFromAuthAttemptCache(username);
+            return ResponseEntity.ok(response);
+        } catch (AuthenticationException e) {
+            authenticationAttemptService.addUserToAuthAttemptCache(username);
+            loginAttempts = authenticationAttemptService.getLoginAttempts(username);
+            AuthenticationResponse response = new AuthenticationResponse("Invalid credentials");
+            response.setLoginAttempts(loginAttempts);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
     }
 
+
+
+    @Operation(
+            summary = "Activate user account",
+            description = "Activates a user account using the provided activation token."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Account activated successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ActivationAccountResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "Your account has been activated successfully."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Activation failed due to invalid token",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ActivationAccountResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "Activation failed: Invalid token."
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     @GetMapping("/activate-account")
-    public void confirm(
-            @RequestParam String token
-    ) throws MessagingException {
-        service.activateAccount(token);
+    public ResponseEntity<ActivationAccountResponse> confirm(@RequestParam String token) throws MessagingException {
+        boolean isActivated = service.activateAccount(token);
+        ActivationAccountResponse activationAccountResponse;
+
+        if (isActivated) {
+            activationAccountResponse = new ActivationAccountResponse(ACCOUNT_ACTIVATED_SUCCESSFULLY);
+            return ResponseEntity.ok(activationAccountResponse);
+        } else {
+            activationAccountResponse = new ActivationAccountResponse(ACTIVATION_FAILED_INVALID_TOKEN);
+            return ResponseEntity.badRequest().body(activationAccountResponse);
+        }
     }
 
-    private URI getCurrentRequestBaseUri() {
-        return ServletUriComponentsBuilder.fromCurrentServletMapping().build().toUri();
+
+    @Operation(
+            summary = "Request password reset",
+            description = "Initiates a password reset process for the given email address."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Password reset request sent successfully"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid email format"
+    )
+    @PostMapping("/reset-password/request")
+    public ResponseEntity<String> requestPasswordReset(@RequestParam("email") String email) {
+        service.requestPasswordReset(email);
+        return ResponseEntity.ok("Password reset request sent successfully");
     }
 
+    @Operation(
+            summary = "Reset password",
+            description = "Resets the password using the provided reset token."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Password reset successfully"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid token format or expired token"
+    )
+    @PostMapping("/reset-password/submit")
+    public ResponseEntity<String> resetPassword(@RequestParam("code") String code,
+                                                @RequestParam("signature") String signature,
+                                                @RequestParam("newPassword") String newPassword) {
+        service.resetPassword(code, signature, newPassword);
+        return ResponseEntity.ok("Password reset successfully");
+    }
+
+
+//    private URI getCurrentRequestBaseUri() {
+//        return ServletUriComponentsBuilder.fromCurrentServletMapping().build().toUri();
+//    }
+//    private String getCurrentRequestBaseUri() {
+//        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+//        String scheme = request.getScheme();
+//        String serverName = request.getServerName();
+//        int serverPort = request.getServerPort();
+//        String contextPath = request.getContextPath();
+//        return scheme + "://" + serverName + ":" + serverPort + contextPath;
+//    }
+
+    private String getCurrentRequestBaseUri() {
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        return UriComponentsBuilder.fromHttpUrl(request.getRequestURL().toString())
+                .replacePath(request.getContextPath()).build().toUriString();
+    }
 }
