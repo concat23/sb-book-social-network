@@ -23,6 +23,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.security.auth.login.AccountLockedException;
 import java.net.URI;
 import java.time.LocalDateTime;
 
@@ -35,9 +36,6 @@ import static com.dev.sbbooknetwork.constant.ApiMessage.*;
 @Tag(name="Authentication", description = "Endpoints for user authentication and registration")
 public class AuthenticationController {
     private final AuthenticationService service;
-
-    private final AuthenticationAttemptService authenticationAttemptService;
-
     @Secured("ADMIN")
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.ACCEPTED)
@@ -162,35 +160,18 @@ public class AuthenticationController {
             }
     )
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> authenticate(
-            @RequestBody @Valid AuthenticationRequest request) {
-
-        String username = request.getEmail();
-
-        int loginAttempts = authenticationAttemptService.getLoginAttempts(username);
-
-        if (authenticationAttemptService.hasExceededMaxAttempts(username)) {
-            AuthenticationResponse response = new AuthenticationResponse("Maximum login attempts exceeded");
-
-
-            response.setLoginAttempts(loginAttempts);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody @Valid AuthenticationRequest request) throws AccountLockedException {
+        String loginPage = getCurrentRequestBaseUri() + "/auth/authenticate";
+        LocalDateTime loginTime = LocalDateTime.now();
         try {
-            String loginPage = getCurrentRequestBaseUri() + "/auth/authenticate";
-            LocalDateTime loginTime = LocalDateTime.now();
-            AuthenticationResponse response = service.authenticate(request, LOGIN_SUCCESSFULLY, loginTime, loginPage, loginAttempts);
-            authenticationAttemptService.evictUserFromAuthAttemptCache(username);
+            AuthenticationResponse response = service.authenticate(request,LOGIN_SUCCESSFULLY, loginTime, loginPage);
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
-            authenticationAttemptService.addUserToAuthAttemptCache(username);
-            loginAttempts = authenticationAttemptService.getLoginAttempts(username);
-            AuthenticationResponse response = new AuthenticationResponse("Invalid credentials");
-            response.setLoginAttempts(loginAttempts);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            AuthenticationResponse responseFailed = service.authenticate(request, LOGIN_FAILED,loginTime,loginPage);
+            return ResponseEntity.ok(responseFailed);
         }
     }
+
 
 
 

@@ -9,6 +9,7 @@ public class ApiMessage {
     public static final String ACCESS_DENIED_MESSAGE = "Access is denied.";
 
     public static final String LOGIN_SUCCESSFULLY = "Login successfully.";
+    public static final String LOGIN_FAILED = "Login failed !";
     public ApiMessage(int value, String forbidden, String forbiddenMessage) {
     }
 }

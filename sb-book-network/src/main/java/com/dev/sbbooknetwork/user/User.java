@@ -43,7 +43,13 @@ public class User implements UserDetails, Principal {
     private String password;
 
     private boolean accountLocked = false;
+
+    private boolean accountNonLocked = false;
+
     private boolean enabled = true;
+
+    private LocalDateTime lockTime;
+    private LocalDateTime unlockTime;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
@@ -55,7 +61,7 @@ public class User implements UserDetails, Principal {
 
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
-    private int loginAttempts = 0;
+
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "UserRoles",
@@ -68,14 +74,6 @@ public class User implements UserDetails, Principal {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookTransactionHistory> histories;
-
-    public void incrementLoginAttempts() {
-        this.loginAttempts++;
-    }
-
-    public void resetLoginAttempts() {
-        this.loginAttempts = 0;
-    }
 
     public void lockAccount() {
         this.accountLocked = true;
