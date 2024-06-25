@@ -109,7 +109,10 @@ public class AuthenticationController {
 
     @Operation(
             summary = "Authenticate user",
-            description = "Authenticate a user based on the provided credentials.",
+            description = """
+                      Authenticate a user based on the provided credentials.
+                      Users are allowed a maximum of 5 failed login attempts before the account is locked.
+                      """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
                     content = @Content(
@@ -117,11 +120,11 @@ public class AuthenticationController {
                             schema = @Schema(implementation = AuthenticationRequest.class),
                             examples = @ExampleObject(
                                     value = """
-                                            {
-                                              "email": "anhbangluckystar@gmail.com",
-                                              "password": "abc@#123"
-                                            }
-                                            """
+                                        {
+                                          "email": "anhbangluckystar@gmail.com",
+                                          "password": "abc@#123"
+                                        }
+                                        """
                             )
                     )
             ),
@@ -134,27 +137,43 @@ public class AuthenticationController {
                                     schema = @Schema(implementation = AuthenticationResponse.class),
                                     examples = @ExampleObject(
                                             value = """
-                                                    {
-                                                      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-                                                    }
-                                                    """
+                                                {
+                                                  "message": "Login successfully.",
+                                                  "token": "eyJhbGciOiJIUzM4NCJ9.eyJmdWxsTmFtZSI6ImFuaGJhbmdsdWNreXN0YXJAZ21haWwuY29tIiwic3ViIjoiYW5oYmFuZ2x1Y2t5c3RhckBnbWFpbC5jb20iLCJpYXQiOjE3MTkzNDIxMDYsImV4cCI6MTcxOTM1MDc0NiwiYXV0aG9yaXRpZXMiOlsiQURNSU4iXX0.aBDtw51MkiQlz-1EasjkU6QVs1MQTDgZkn2-NB1cRTeYtyAYypn6deDmLz5VRAGg",
+                                                  "loginTime": "2024-06-25T19:01:45.496330837",
+                                                  "loginPage": "http://localhost:8600/api/v1/auth/authenticate",
+                                                  "countLoginFailed": 0
+                                                }
+                                                """
                                     )
                             )
                     ),
                     @ApiResponse(
                             responseCode = "401",
-                            description = "Unauthorized",
+                            description = "Error response",
                             content = @Content(
                                     mediaType = "application/json",
                                     schema = @Schema(implementation = ErrorResponse.class),
-                                    examples = @ExampleObject(
-                                            value = """
-                                                    {
-                                                      "status": "UNAUTHORIZED",
-                                                      "message": "Invalid credentials"
-                                                    }
-                                                    """
-                                    )
+                                    examples = {
+                                            @ExampleObject(
+                                                    name = "Invalid credentials",
+                                                    value = """
+                                                            {
+                                                              "status": "UNAUTHORIZED",
+                                                              "message": "Invalid credentials"
+                                                            }
+                                                            """
+                                            ),
+                                            @ExampleObject(
+                                                    name = "Account locked",
+                                                    value = """
+                                                            {
+                                                              "status": "UNAUTHORIZED",
+                                                              "message": "Account locked due to too many failed login attempts"
+                                                            }
+                                                            """
+                                            )
+                                    }
                             )
                     )
             }
@@ -164,13 +183,14 @@ public class AuthenticationController {
         String loginPage = getCurrentRequestBaseUri() + "/auth/authenticate";
         LocalDateTime loginTime = LocalDateTime.now();
         try {
-            AuthenticationResponse response = service.authenticate(request,LOGIN_SUCCESSFULLY, loginTime, loginPage);
+            AuthenticationResponse response = service.authenticate(request, LOGIN_SUCCESSFULLY, loginTime, loginPage);
             return ResponseEntity.ok(response);
         } catch (AuthenticationException e) {
-            AuthenticationResponse responseFailed = service.authenticate(request, LOGIN_FAILED,loginTime,loginPage);
-            return ResponseEntity.ok(responseFailed);
+            AuthenticationResponse responseFailed = service.authenticate(request, LOGIN_FAILED, loginTime, loginPage);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseFailed);
         }
     }
+
 
 
 

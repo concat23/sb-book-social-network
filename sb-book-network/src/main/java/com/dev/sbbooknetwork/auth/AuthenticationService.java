@@ -14,8 +14,7 @@ import com.google.common.cache.LoadingCache;
 import jakarta.mail.MessagingException;
 import jakarta.xml.bind.DatatypeConverter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,7 +43,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    private static final int MAXIMUM_NUMBER_OF_ATTEMPTS = 10;
+    private static final int MAXIMUM_NUMBER_OF_ATTEMPTS = 5;
     private static final int LOCK_DURATION_MINUTES = 5;
 
     private final LoadingCache<String, Integer> loginAttemptCache;
@@ -103,17 +102,23 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, String msg, LocalDateTime loginTime, String loginPage) throws AccountLockedException {
         String email = request.getEmail();
+        String password = request.getPassword();
         int count = loginAttemptsMap.getOrDefault(email, 0);
 
         if (isAccountLocked(email)) {
             throw new AccountLockedException("Account is locked. Please try again later.");
         }
 
+        // Check if the email exists in the user repository
+        if (!userRepository.emailExists(email)) {
+            return handleInvalidEmail(loginTime, loginPage);
+        }
+
         try {
             var auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             email,
-                            request.getPassword()
+                            password
                     )
             );
 
@@ -123,40 +128,117 @@ public class AuthenticationService {
 
             var jwtToken = jwtService.generateToken(claims, user);
 
-            evictUserFromLoginAttemptCache(user.getEmail());
-            loginAttemptsMap.put(email, 0);
+            evictUserFromLoginAttemptCache(email);
+            loginAttemptsMap.put(email, 0);  // Reset email attempt count after successful login
+
             return AuthenticationResponse.builder()
                     .token(jwtToken)
                     .message(msg)
                     .loginTime(loginTime)
                     .loginPage(loginPage)
-                    .countLoginFailed(count)
+                    .countLoginFailed(0)
                     .build();
 
+        } catch (BadCredentialsException e) {
+            count++;  // Increment email attempt count
+            loginAttemptsMap.put(email, count);
+
+            if (count > MAXIMUM_NUMBER_OF_ATTEMPTS) {
+                lockUserAccountForFiveMinutes(email);  // Lock account if count reaches maximum attempts
+                throw new AccountLockedException("Account is locked. Please try again later.");
+            }
+
+            // Determine the type of authentication failure
+            switch (getAuthenticationFailureType(e)) {
+                case INVALID_PASSWORD:
+                    return handleInvalidPassword(loginTime, loginPage, count, password);
+                case INVALID_CREDENTIALS:
+                default:
+                    return handleInvalidCredentials(email, loginTime, loginPage, count);
+            }
         } catch (AuthenticationException e) {
-            addUserToLoginAttemptCache(email);
+            // Handle other authentication exceptions if necessary
             count++;
             loginAttemptsMap.put(email, count);
 
-
-            if (count >= MAXIMUM_NUMBER_OF_ATTEMPTS) {
+            if (count > MAXIMUM_NUMBER_OF_ATTEMPTS) {
                 lockUserAccountForFiveMinutes(email);
                 throw new AccountLockedException("Account is locked. Please try again later.");
             }
 
-            System.out.println("Count: " + count);
-
-            return AuthenticationResponse.builder()
-                    .message("Invalid credentials")
-                    .loginTime(loginTime)
-                    .loginPage(loginPage)
-                    .countLoginFailed(loginAttemptsMap.getOrDefault(email, 0))
-                    .build();
+            return handleAuthenticationFailed(email, loginTime, loginPage, count);
         }
     }
 
+    private AuthenticationResponse handleInvalidEmail(LocalDateTime loginTime, String loginPage) {
+        return AuthenticationResponse.builder()
+                .message("Email does not exist")
+                .loginTime(loginTime)
+                .loginPage(loginPage)
+                .build();
+    }
 
+    private AuthenticationResponse handleInvalidPassword(LocalDateTime loginTime, String loginPage, int count, String password) {
+        return AuthenticationResponse.builder()
+                .message("Password " + password + " is invalid")
+                .loginTime(loginTime)
+                .loginPage(loginPage)
+                .countLoginFailed(count)
+                .build();
+    }
 
+    private AuthenticationResponse handleInvalidCredentials(String email, LocalDateTime loginTime, String loginPage, int count) {
+        return AuthenticationResponse.builder()
+                .message("Invalid credentials")
+                .loginTime(loginTime)
+                .loginPage(loginPage)
+                .countLoginFailed(count)
+                .build();
+    }
+
+    private AuthenticationResponse handleAuthenticationFailed(String email, LocalDateTime loginTime, String loginPage, int count) {
+        return AuthenticationResponse.builder()
+                .message("Authentication failed")
+                .loginTime(loginTime)
+                .loginPage(loginPage)
+                .countLoginFailed(count)
+                .build();
+    }
+
+    private AuthenticationFailureType getAuthenticationFailureType(BadCredentialsException e) {
+        String message = e.getMessage();
+        if (message != null) {
+            if (message.contains("UsernameNotFoundException") || message.contains("UserDetailsService returned null")) {
+                return AuthenticationFailureType.INVALID_EMAIL;
+            } else if (message.contains("Bad credentials")) {
+                return AuthenticationFailureType.INVALID_PASSWORD;
+            }
+        }
+        return AuthenticationFailureType.INVALID_CREDENTIALS;
+    }
+
+    private String getCountDescription(int count) {
+        switch (count) {
+            case 1:
+                return "first";
+            case 2:
+                return "second";
+            case 3:
+                return "third";
+            case 4:
+                return "fourth";
+            case 5:
+                return "fifth";
+            default:
+                return count + "th";
+        }
+    }
+
+    private enum AuthenticationFailureType {
+        INVALID_EMAIL,
+        INVALID_PASSWORD,
+        INVALID_CREDENTIALS
+    }
 
     public void evictUserFromLoginAttemptCache(String username) {
         loginAttemptCache.invalidate(username);
@@ -242,6 +324,8 @@ public class AuthenticationService {
 
         // Validate token signature if necessary
         if (!validateTokenSignature(user, signature)) {
+            System.out.println("Expected signature: " + generateSignature(user.getResetToken()));
+            System.out.println("Received signature: " + signature);
             throw new IllegalArgumentException("Invalid token signature");
         }
 
@@ -255,8 +339,12 @@ public class AuthenticationService {
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
 
+        // Unlock the account
+        user.setAccountLocked(false);
+
         userRepository.save(user);
     }
+
 
     private void sendValidationEmail(User user) throws MessagingException {
         var newToken = generateAndSaveActivationToken(user);
@@ -293,6 +381,7 @@ public class AuthenticationService {
         tokenRepository.save(token);
         return generatedToken;
     }
+
 
     private String generateRandomNumericToken(int length) {
         Random random = new Random();
@@ -345,6 +434,7 @@ public class AuthenticationService {
         return expectedSignature.equals(signature);
     }
 
+
     private String generateSignature(String resetToken) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -354,4 +444,5 @@ public class AuthenticationService {
             throw new RuntimeException("Error generating token signature", e);
         }
     }
+
 }
