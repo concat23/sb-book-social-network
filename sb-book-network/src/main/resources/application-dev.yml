@@ -34,10 +34,16 @@ spring:
 
 
   mail:
-    host: localhost
-    port: 1025
-    username: bang
-    password: bang
+    # Mail Dev Server
+#    host: localhost
+#    port: 1025
+#    username: bang
+#    password: bang
+    # Google mail
+    host: smtp.gmail.com
+    port: 587
+    username: ecosystemprogramminglanguage@gmail.com
+    password: ainubmlhyfkrbnzy
     properties:
       mail:
         smtp:

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Integer> {
@@ -14,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean emailExists(@Param("email") String email);
 
     Optional<User> findByResetToken(String resetToken);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
+    List<User> findUsersByRoleName(@Param("roleName") String roleName);
 }

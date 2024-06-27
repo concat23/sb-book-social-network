@@ -33,13 +33,18 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-sb-book-social-network:3306/bsndb
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: abc@#123
-      SPRING_MAIL_HOST: mail-dev
-      SPRING_MAIL_PORT: 1025
-      SPRING_MAIL_USERNAME: bang
-      SPRING_MAIL_PASSWORD: bang
+      # Mail Dev Service
+#      SPRING_MAIL_HOST: mail-dev
+#      SPRING_MAIL_PORT: 1025
+#      SPRING_MAIL_USERNAME: bang
+#      SPRING_MAIL_PASSWORD: bang
+      # Google mail
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: ecosystemprogramminglanguage@gmail.com
+      SPRING_MAIL_PASSWORD: ainubmlhyfkrbnzy
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
-
   mail-dev:
     container_name: mail-dev-sb-book-social-network
     image: maildev/maildev

@@ -95,6 +95,10 @@ public class User implements UserDetails, Principal {
                 .collect(Collectors.toList());
     }
 
+    public List<String> getRoleNames() {
+        return roles.stream().map(Role::getName).collect(Collectors.toList());
+    }
+
     @Override
     public String getUsername() {
         return email;

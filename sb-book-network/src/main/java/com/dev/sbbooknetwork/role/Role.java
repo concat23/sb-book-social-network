@@ -1,14 +1,14 @@
 package com.dev.sbbooknetwork.role;
 
+
 import com.dev.sbbooknetwork.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import org.springframework.security.core.userdetails.UserDetails;
 
-import java.security.Principal;
 import java.util.List;
+
 
 @Getter
 @Setter
@@ -26,7 +26,9 @@ public class Role {
     @Column(unique = true)
     private String name;
 
-    @ManyToMany(mappedBy = "roles")
+    @ManyToMany(mappedBy = "roles", cascade = { CascadeType.PERSIST, CascadeType.MERGE })
     @JsonIgnore
     private List<User> users;
+
+
 }

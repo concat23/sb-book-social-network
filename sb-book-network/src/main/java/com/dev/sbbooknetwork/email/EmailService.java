@@ -59,6 +59,11 @@ public class EmailService {
     }
 
 
+    @Async
+    public void sendMailWithGmail(String to, String subject, String text) throws MessagingException {
+
+    }
+
     public void sendPasswordResetEmail(User user, String resetLink) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());

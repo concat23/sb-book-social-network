@@ -12,6 +12,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.xml.bind.DatatypeConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.*;
@@ -31,7 +32,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
-
 public class AuthenticationService {
 
     private final RoleRepository roleRepository;
@@ -52,6 +52,8 @@ public class AuthenticationService {
 
     private Map<String, Integer> loginAttemptsMap = new HashMap<>();
 
+    private final HttpServletRequest request;
+
     @Value("${application.mailing.frontend.activation-url}")
     private String activationUrl;
 
@@ -62,7 +64,7 @@ public class AuthenticationService {
                                  TokenRepository tokenRepository,
                                  EmailService emailService,
                                  AuthenticationManager authenticationManager,
-                                 JwtService jwtService) {
+                                 JwtService jwtService, HttpServletRequest request) {
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
@@ -70,6 +72,7 @@ public class AuthenticationService {
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.request = request;
         loginAttemptCache = CacheBuilder.newBuilder()
                 .expireAfterWrite(LOCK_DURATION_MINUTES, TimeUnit.MINUTES)
                 .maximumSize(100)
@@ -346,10 +349,25 @@ public class AuthenticationService {
     }
 
 
+    public String getCurrentToken() {
+        String authorizationHeader = request.getHeader("Authorization");
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            return authorizationHeader.substring(7); // Extract the token from the header
+        }
+        return null;
+    }
+
+    public User getUserFromToken(String token) {
+        String email = jwtService.extractUsername(token); // Assuming your JWT contains the email
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
     private void sendValidationEmail(User user) throws MessagingException {
         var newToken = generateAndSaveActivationToken(user);
         emailService.sendMail(user.getEmail(), user.fullName(), EmailTemplateName.ACTIVATE_ACCOUNT, activationUrl, newToken, "Account activation");
+        emailService.sendMailWithGmail(user.getEmail(),"SB Book Social Network","This is message from system");
     }
+
 
     private String generateSignature(String email, String resetToken) {
         return email.substring(0, 3) + resetToken.substring(0, 3);

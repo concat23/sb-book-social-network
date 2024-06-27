@@ -1,5 +1,7 @@
 package com.dev.sbbooknetwork.auth;
 
+import com.dev.sbbooknetwork.user.User;
+import com.google.gson.Gson;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -20,11 +22,9 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.security.auth.login.AccountLockedException;
-import java.net.URI;
 import java.time.LocalDateTime;
 
 import static com.dev.sbbooknetwork.constant.ApiMessage.*;
@@ -284,6 +284,29 @@ public class AuthenticationController {
         return ResponseEntity.ok("Password reset successfully");
     }
 
+
+    @GetMapping("/current")
+    @Operation(summary = "Get current user details", description = "Retrieve the details of the current user based on the token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Success", content = @io.swagger.v3.oas.annotations.media.Content(schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<String> getCurrentUser(@RequestParam("tokenCode") String tokenCode) {
+        User currentUser = service.getUserFromToken(tokenCode);
+        if (currentUser != null) {
+            String mail = currentUser.getEmail();
+            try {
+                Gson gson = new Gson();
+                String jsonMail = gson.toJson(mail);
+                return ResponseEntity.ok(jsonMail);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return ResponseEntity.status(500).body("Internal server error: Unable to parse email as JSON");
+            }
+        } else {
+            return ResponseEntity.status(401).build();
+        }
+    }
 
 //    private URI getCurrentRequestBaseUri() {
 //        return ServletUriComponentsBuilder.fromCurrentServletMapping().build().toUri();

@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableAsync
-//@EnableJpaRepositories
+@EnableJpaRepositories
 public class SbBookNetworkApplication {
 
     public static void main(String[] args) {
