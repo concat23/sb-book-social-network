@@ -9,6 +9,7 @@ services:
     volumes:
       - mysql-sb-book-social-network:/var/lib/mysql
       - mysql-sb-book-social-network-config-deamond:/etc/mysql/conf.d
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - backend-net
     environment:
@@ -54,6 +55,21 @@ services:
     networks:
       - backend-net
 
+  mysql-backup:
+    image: mysql:8.0.28
+    container_name: mysql-backup
+    volumes:
+      - ./backup.sh:/usr/local/bin/backup.sh
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+      - mysql-sb-book-social-network-backups:/backups
+    entrypoint: [ "sh", "-c", "chmod +x /usr/local/bin/backup.sh && chmod +x /usr/local/bin/wait-for-it.sh && /usr/local/bin/backup.sh" ]
+    environment:
+      - MYSQL_HOST=mysql-sb-book-social-network
+    depends_on:
+      - mysql-sb-book-social-network
+    networks:
+      - backend-net
+
 networks:
   backend-net:
     name: sb-book-social-network-net
@@ -61,3 +77,5 @@ networks:
 volumes:
   mysql-sb-book-social-network:
   mysql-sb-book-social-network-config-deamond:
+  mysql-sb-book-social-network-backups:
+

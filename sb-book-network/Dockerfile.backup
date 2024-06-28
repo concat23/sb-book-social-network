@@ -1,0 +1,4 @@
+# Dockerfile for mysql-backup service
+FROM fradelg/mysql-cron-backup
+ADD wait-for-it.sh /wait-for-it.sh
+RUN chmod +x /wait-for-it.sh
