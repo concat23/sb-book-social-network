@@ -55,7 +55,7 @@ public class UploadServerService {
 
         // Xây dựng đường dẫn URL của file trên server
         String serverDomain = getServerDomain();
-        String urlFile = serverDomain + "/uploads/" + fileName;
+        String urlFile = serverDomain + "/api/v1/uploads/" + fileName;
         logger.debug("File URL: {}", urlFile);
 
         // Lưu thông tin metadata của file vào cơ sở dữ liệu
@@ -67,7 +67,7 @@ public class UploadServerService {
                 .uploadType(UploadType.SERVER)
                 .fileType(file.getContentType())
                 .fileSize(String.valueOf(file.getSize()))
-                .publicId("uploads/" + fileName)
+                .publicId("/api/v1/uploads/" + fileName)
                 .build();
 
         // Lưu metadata của file vào cơ sở dữ liệu và trả về đối tượng UploadedFile đã lưu
@@ -97,7 +97,7 @@ public class UploadServerService {
                     (attributes.getRequest().getServerPort() != 80 ? ":" + attributes.getRequest().getServerPort() : "");
         }
 
-        uploadedFile.setUrlFile(serverDomain + "/uploads/" + fileName);
+        uploadedFile.setUrlFile(serverDomain + "/api/v1/uploads/" + fileName);
 
         uploadedFile.setFileBytes(fileBytes);
 
