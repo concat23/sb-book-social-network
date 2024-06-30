@@ -45,8 +45,8 @@ application:
 
   file:
     uploads:
-      photos-output-path: ./uploads
-
+      photos-output-path: /uploads
+      directory: ${user.dir}/src/main/resources/uploads
 cloudinary:
   cloudName: do20urnhr
   apiKey: 923335259698874

@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 
 @Service
@@ -124,13 +125,14 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = cloudinary.uploader().upload(file, params);
-
+            byte[] fileBytes = Files.readAllBytes(file.toPath());
             UploadedFile uploadedFile = UploadedFile.builder()
                     .originalFileName(originalFilename)
                     .modifiedFileName(modifiedFilename)
                     .urlFile((String) uploadResult.get("secure_url"))
                     .fileSize(formatFileSize(file.length()))
                     .fileType(getFileType(modifiedFilename))
+                    .fileBytes(fileBytes)
                     .uploadType(UploadType.CLOUDINARY)
                     .publicId((String) uploadResult.get("public_id"))
                     .build();

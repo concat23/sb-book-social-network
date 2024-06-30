@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +16,9 @@ public class UploadedFileService {
         return fileRepository.save(uploadedFile);
     }
 
+    public UploadedFile findByOriginalFileName(String originalFileName) {
+        return fileRepository.findByOriginalFileName(originalFileName);
+    }
 
     public UploadedFile getUploadedFile(String publicId) {
         return fileRepository.findByPublicId(publicId);
