@@ -125,12 +125,17 @@ public class UploadServerService {
     @Transactional
     public void deleteFile(String publicId) throws IOException {
         UploadedFile uploadedFile = uploadedFileService.getUploadedFile(publicId);
-        // Delete file from filesystem
-        Path path = Paths.get(uploadDirectory + File.separator + uploadedFile.getOriginalFileName());
-        Files.deleteIfExists(path);
+        if (uploadedFile != null){
+            // Delete file from filesystem
+            Path path = Paths.get(uploadDirectory + File.separator + uploadedFile.getPublicId());
+            Files.deleteIfExists(path);
 
-        // Delete file metadata from database
-        uploadedFileService.deleteUploadedFile(uploadedFile.getPublicId());
+            // Delete file metadata from database
+            uploadedFileService.deleteUploadedFile(uploadedFile.getPublicId());
+        }else {
+            throw new FileNotFoundException("");
+        }
+
     }
 
     private String getServerDomain() {
